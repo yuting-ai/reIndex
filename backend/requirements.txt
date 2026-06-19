@@ -1,0 +1,12 @@
+fastapi>=0.136
+uvicorn>=0.40
+sqlalchemy>=2.0
+neo4j>=6.2
+qdrant-client>=1.18
+sentence-transformers>=5.5
+openai>=2.41
+openai-agents>=0.17
+pydantic>=2.12
+python-dotenv>=1.2
+watchdog>=6.0
+easyocr>=1.7
