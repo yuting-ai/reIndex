@@ -50,12 +50,134 @@ Folder (AppleScript pick)
 
 ### Core Flow
 
-1. **Indexing**: User picks a folder → backend scans all files → parses plain text & images via EasyOCR → calls LLM for summary + entities → stores embeddings in Qdrant and knowledge triplets in Neo4j.
-2. **File Management**: macOS Finder-style interface with Active/Trash views. Batch operations (trash, restore, permanent delete) sync across SQLite, Neo4j, and Qdrant.
-3. **Search**: Hybrid — SQLite full-text (file names) + Qdrant vector similarity (semantic content). Results navigate to correct folder with automatic parent directory expansion.
-4. **Knowledge Graph**: vis-network visualizes Neo4j data. Client-side filtering by node/relationship type. All data fetched through backend API proxy (no direct Bolt connections).
-5. **AI Chat Agent**: Master agent (OpenAI Agents SDK + DeepSeek) with tools: `search_knowledge_base` (Qdrant + Neo4j), `read_local_file`, `rename_local_file`. Chat sessions auto-summarize for context management.
-6. **Real-time Watchdog**: `watchdog` monitors indexed folders; incremental re-index triggers on file changes (2s debounce).
+```mermaid
+flowchart TD
+
+    U[User]
+
+    %% =====================
+    %% Indexing
+    %% =====================
+    subgraph IDX[Indexing Pipeline]
+        FOLDER[Select Folder]
+        SCAN[Scan Files]
+        PARSETXT[Parse Text Files]
+        OCR[EasyOCR Image Extraction]
+        LLM[LLM Summary &amp; Entity Extraction]
+        EMB[Generate Embeddings]
+
+        FOLDER --> SCAN
+        SCAN --> PARSETXT
+        SCAN --> OCR
+        PARSETXT --> LLM
+        OCR --> LLM
+        LLM --> EMB
+    end
+
+    %% =====================
+    %% Storage
+    %% =====================
+    subgraph STORE[Storage Layer]
+        SQLITE[(SQLite)]
+        QDRANT[(Qdrant)]
+        NEO4J[(Neo4j)]
+    end
+
+    EMB --> QDRANT
+    LLM --> NEO4J
+    SCAN --> SQLITE
+
+    %% =====================
+    %% File Management
+    %% =====================
+    subgraph FM[File Management]
+        UI[Finder-style UI]
+        ACTIVE[Active View]
+        TRASH[Trash View]
+        BATCH[Batch Operations<br/>Trash / Restore / Delete]
+    end
+
+    UI --> ACTIVE
+    UI --> TRASH
+    ACTIVE --> BATCH
+    TRASH --> BATCH
+
+    BATCH --> SQLITE
+    BATCH --> QDRANT
+    BATCH --> NEO4J
+
+    %% =====================
+    %% Search
+    %% =====================
+    subgraph SEARCH[Hybrid Search]
+        NAME[SQLite Full-text Search<br/>File Names]
+        SEMANTIC[Qdrant Vector Search<br/>Semantic Content]
+        MERGE[Merge Results]
+        NAV[Auto Folder Navigation<br/>Expand Parent Directories]
+    end
+
+    SQLITE --> NAME
+    QDRANT --> SEMANTIC
+    NAME --> MERGE
+    SEMANTIC --> MERGE
+    MERGE --> NAV
+
+    %% =====================
+    %% Knowledge Graph
+    %% =====================
+    subgraph KG[Knowledge Graph]
+        API[Backend API Proxy]
+        FILTER[Client-side Filtering]
+        VIS[vis-network Visualization]
+    end
+
+    NEO4J --> API
+    API --> FILTER
+    FILTER --> VIS
+
+    %% =====================
+    %% AI Chat Agent
+    %% =====================
+    subgraph AGENT[AI Chat Agent]
+        MASTER[Master Agent<br/>OpenAI Agents SDK + DeepSeek]
+        TOOL1[search_knowledge_base]
+        TOOL2[read_local_file]
+        TOOL3[rename_local_file]
+        MEMORY[Auto Session Summary]
+    end
+
+    MASTER --> TOOL1
+    MASTER --> TOOL2
+    MASTER --> TOOL3
+    MASTER --> MEMORY
+
+    TOOL1 --> QDRANT
+    TOOL1 --> NEO4J
+    TOOL2 --> SQLITE
+    TOOL3 --> SQLITE
+
+    %% =====================
+    %% Watchdog
+    %% =====================
+    subgraph WATCH[Real-time Watchdog]
+        WD[watchdog Monitor]
+        CHANGE[File Change Detected]
+        DEBOUNCE[2s Debounce]
+        REINDEX[Incremental Re-index]
+    end
+
+    WD --> CHANGE
+    CHANGE --> DEBOUNCE
+    DEBOUNCE --> REINDEX
+    REINDEX --> SCAN
+
+    %% User interactions
+    U --> UI
+    U --> SEARCH
+    U --> VIS
+    U --> MASTER
+    U --> FOLDER
+```
 
 ### Database Schema (SQLite)
 
