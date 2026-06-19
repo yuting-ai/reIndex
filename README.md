@@ -1,6 +1,9 @@
 # reIndex
 
-An intelligent file indexing and memory system. AI-powered semantic document management with graph-based knowledge representation and natural language search.
+An intelligent file indexing and memory system.
+
+![Preview](preview.png)
+![Preview1](preview1.png) AI-powered semantic document management with graph-based knowledge representation and natural language search.
 
 ## Tech Stack
 
